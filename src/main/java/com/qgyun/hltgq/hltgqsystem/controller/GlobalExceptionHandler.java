@@ -2,6 +2,7 @@ package com.qgyun.hltgq.hltgqsystem.controller;
 
 import com.qgyun.hltgq.hltgqsystem.auth.SessionUnavailableException;
 import com.qgyun.hltgq.hltgqsystem.auth.UnauthorizedException;
+import com.qgyun.hltgq.hltgqsystem.menu.PlatformApiException;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -12,7 +13,8 @@ import java.util.Map;
 
 /**
  * 全局异常处理：统一参数错误与鉴权错误的 HTTP 语义。
- * <p>IllegalArgumentException → 400；UnauthorizedException → 401；SessionUnavailableException → 503。
+ * <p>IllegalArgumentException → 400；UnauthorizedException → 401；SessionUnavailableException → 503；
+ * PlatformApiException（平台菜单接口转发失败）→ 503。
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -40,6 +42,15 @@ public class GlobalExceptionHandler {
         Map<String, Object> result = new HashMap<>();
         result.put("code", 503);
         result.put("message", e.getMessage() == null ? "会话服务不可用" : e.getMessage());
+        return result;
+    }
+
+    @ExceptionHandler(PlatformApiException.class)
+    @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
+    public Map<String, Object> handlePlatformApi(PlatformApiException e) {
+        Map<String, Object> result = new HashMap<>();
+        result.put("code", 503);
+        result.put("message", e.getMessage() == null ? "平台菜单接口不可用" : e.getMessage());
         return result;
     }
 }

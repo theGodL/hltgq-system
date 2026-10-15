@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>菜单管理</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;background:#f5f7fa;color:#333;font-size:14px;-webkit-font-smoothing:antialiased}
+.page{padding:20px 24px 48px}
+.banner{display:none;margin-bottom:14px;padding:10px 14px;border-radius:6px;background:#f6ffed;border:1px solid #b7eb8f;color:#389e0d;font-size:13px}
+.banner.err{background:#fff2f0;border-color:#ffccc7;color:#cf1322}
+.card{background:#fff;border-radius:8px;padding:16px 18px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.btn{display:inline-flex;align-items:center;justify-content:center;height:32px;padding:0 16px;border:1px solid transparent;border-radius:6px;font-size:13px;font-family:inherit;cursor:pointer;transition:all .2s}
+.btn-primary{background:#1677ff;color:#fff;border-color:#1677ff}
+.btn-primary:hover{background:#4096ff}
+.btn-default{background:#fff;color:#333;border-color:#d9d9d9}
+.btn-default:hover{color:#1677ff;border-color:#1677ff}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+input{height:32px;padding:0 10px;border:1px solid #d9d9d9;border-radius:6px;font-size:13px;font-family:inherit;color:#333;outline:none;transition:border-color .2s}
+input:focus{border-color:#1677ff}
+.toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:12px;flex-wrap:wrap}
+.tools{display:flex;gap:8px;align-items:center}
+.hint{font-size:12px;color:#8c8c8c}
+.badge{display:none;margin-left:6px;min-width:18px;height:18px;line-height:18px;padding:0 5px;border-radius:9px;background:#fff;color:#1677ff;font-size:11px;font-weight:600;text-align:center}
+.tree{user-select:none}
+.trow{display:flex;align-items:center;gap:8px;min-height:34px;padding:2px 10px;border-radius:6px;position:relative}
+.trow:hover{background:#fafcff}
+.trow.dragging{opacity:.4}
+.trow.locked-row{background:#fafafa}
+.trow.drop-in{background:#e6f4ff;box-shadow:inset 0 0 0 1px #1677ff}
+.trow.drop-before::before{content:'';position:absolute;left:10px;right:10px;top:-1px;height:2px;background:#1677ff;border-radius:1px}
+.trow.drop-after::after{content:'';position:absolute;left:10px;right:10px;bottom:-1px;height:2px;background:#1677ff;border-radius:1px}
+.caret{width:16px;text-align:center;color:#8c8c8c;cursor:pointer;font-size:12px;flex:none}
+.caret.leaf{cursor:default;color:#e0e0e0}
+.tname{font-size:13px;color:#1f1f1f;cursor:text;white-space:nowrap}
+.tname.edited{color:#1677ff}
+.tname.edited::after{content:'*';font-size:12px;margin-left:2px}
+.name-input{height:26px;min-width:160px;max-width:280px;padding:0 8px;border:1px solid #1677ff;border-radius:4px;font-size:13px;outline:none;color:#333}
+.tag{display:inline-flex;align-items:center;height:20px;padding:0 6px;border-radius:4px;font-size:11px;font-weight:500;flex:none}
+.tag-group{background:#f0f5ff;color:#2f54eb}
+.tag-menu{background:#f5f5f5;color:#8c8c8c}
+.tag-hidden{background:#fff7e6;color:#d46b08}
+.tag-orphan{background:#f9f0ff;color:#722ed1}
+.tag-lock{background:#f6ffed;color:#389e0d}
+.tag-nohide{background:#e6f4ff;color:#0958d9}
+.tchildren{padding-left:22px;border-left:1px dashed #e8e8e8;margin-left:13px}
+.switch{position:relative;display:inline-block;width:34px;height:18px;flex:none;cursor:pointer}
+.switch input{opacity:0;width:0;height:0;padding:0;border:none}
+.slider{position:absolute;inset:0;background:#d9d9d9;border-radius:9px;transition:.2s}
+.slider::before{content:'';position:absolute;width:14px;height:14px;left:2px;top:2px;background:#fff;border-radius:50%;transition:.2s}
+.switch input:checked + .slider{background:#1677ff}
+.switch input:checked + .slider::before{transform:translateX(16px)}
+.switch input:disabled + .slider{opacity:.5;cursor:not-allowed}
+.empty{padding:40px;text-align:center;color:#bfbfbf}
+.toast{position:fixed;right:24px;bottom:24px;z-index:2000;background:#f6ffed;border:1px solid #b7eb8f;color:#389e0d;padding:10px 16px;border-radius:6px;font-size:13px;box-shadow:0 2px 8px rgba(0,0,0,.08);opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}
+.toast.err{background:#fff2f0;border-color:#ffccc7;color:#cf1322}
+.btn-danger{background:#ff4d4f;color:#fff;border-color:#ff4d4f}
+.btn-danger:hover{background:#ff7875;border-color:#ff7875}
+.dlg-mask{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:3000;align-items:center;justify-content:center}
+.dlg-mask.show{display:flex}
+.dlg{width:400px;max-width:calc(100vw - 48px);background:#fff;border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,.16);padding:18px 20px}
+.dlg-title{font-size:15px;font-weight:600;color:#1f1f1f;margin-bottom:10px}
+.dlg-body{font-size:13px;color:#595959;line-height:1.7;white-space:pre-wrap;margin-bottom:18px}
+.dlg-actions{display:flex;justify-content:flex-end;gap:8px}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="banner" id="banner"></div>
+
+  <div class="card">
+    <div class="toolbar">
+      <div class="tools">
+        <button class="btn btn-primary" id="btnSave" disabled>保存更改<span class="badge" id="badge"></span></button>
+        <button class="btn btn-default" id="btnReset">还原默认</button>
+        <button class="btn btn-default" id="btnReload">重新加载</button>
+        <input id="fSearch" placeholder="搜索名称" style="min-width:220px">
+      </div>
+      <div class="hint">拖拽行调整位置：中部=移入分组，上下缘=同级排序；双击名称改名；开关控制显隐；搜索时为只读视图</div>
+    </div>
+    <div class="tree" id="tree"></div>
+    <div class="empty" id="empty" style="display:none">暂无菜单数据</div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<div class="dlg-mask" id="dlgMask">
+  <div class="dlg">
+    <div class="dlg-title" id="dlgTitle">确认</div>
+    <div class="dlg-body" id="dlgBody"></div>
+    <div class="dlg-actions">
+      <button class="btn btn-default" id="dlgCancel">取消</button>
+      <button class="btn btn-primary" id="dlgOk">确定</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API_BASE = location.pathname.replace(/[^/]*$/, '');
+const ROOT = '#ROOT#';
+
+let state = { tree: [], locked: [], version: '', baseline: '' };
+let collapsed = new Set();
+let drag = null;
+let drop = null;
+
+function el(id){ return document.getElementById(id); }
+
+async function api(path, opts){
+  const resp = await fetch(API_BASE + path, opts);
+  if (resp.status === 403) { throw { message: '无操作权限，仅管理员可管理菜单' }; }
+  if (resp.status === 401) { throw { message: '未登录或登录已过期，请从平台门户重新进入' }; }
+  if (!resp.ok) { const t = await resp.text(); throw { message: '请求失败(' + resp.status + ') ' + t }; }
+  return resp.json();
+}
+
+function showBanner(msg, ok){
+  const b = el('banner');
+  b.textContent = msg;
+  b.className = 'banner' + (ok ? '' : ' err');
+  b.style.display = 'block';
+  if (ok) setTimeout(function(){ b.style.display = 'none'; }, 3000);
+}
+
+let toastTimer = null;
+function showToast(msg, ok){
+  const t = el('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (ok ? '' : ' err');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ t.className = 'toast'; }, 2200);
+}
+
+// ---------- 页内确认框（替代原生 confirm） ----------
+
+let dlgOnOk = null;
+function openConfirm(title, body, okText, danger, onOk){
+  el('dlgTitle').textContent = title;
+  el('dlgBody').textContent = body;
+  const ok = el('dlgOk');
+  ok.textContent = okText || '确定';
+  ok.className = 'btn ' + (danger ? 'btn-danger' : 'btn-primary');
+  dlgOnOk = onOk;
+  el('dlgMask').classList.add('show');
+}
+function closeConfirm(){
+  el('dlgMask').classList.remove('show');
+  dlgOnOk = null;
+}
+el('dlgCancel').addEventListener('click', closeConfirm);
+el('dlgOk').addEventListener('click', function(){
+  const f = dlgOnOk;
+  closeConfirm();
+  if (f) f();
+});
+el('dlgMask').addEventListener('click', function(e){ if (e.target === el('dlgMask')) closeConfirm(); });
+
+// ---------- 数据加载与序列化 ----------
+
+async function load(){
+  el('banner').style.display = 'none';
+  const data = await api('menu/admin/tree');
+  state.tree = data.tree || [];
+  state.locked = data.lockedMenuIds || [];
+  state.version = data.version || '';
+  state.baseline = serialize();
+  collapsed = new Set();
+  render();
+  updateBadge();
+}
+
+/** DFS 扁平化为提交结构：数组顺序即展示顺序 */
+function flatten(){
+  const rows = [];
+  (function walk(list, parentId){
+    list.forEach(function(n){
+      rows.push({
+        menuId: n.menuId,
+        parentId: n.locked ? ROOT : parentId,
+        displayName: n.name,
+        visible: !!n.visible
+      });
+      if (n.children) walk(n.children, n.menuId);
+    });
+  })(state.tree, ROOT);
+  return rows;
+}
+
+function serialize(){ return JSON.stringify(flatten()); }
+
+function isDirty(){ return serialize() !== state.baseline; }
+
+function diffCount(){
+  const cur = flatten();
+  const base = JSON.parse(state.baseline);
+  const bmap = new Map(base.map(function(r){ return [r.menuId, r]; }));
+  const cmap = new Map(cur.map(function(r){ return [r.menuId, r]; }));
+  let c = 0;
+  cur.forEach(function(r){
+    const b = bmap.get(r.menuId);
+    if (!b || b.parentId !== r.parentId || b.displayName !== r.displayName || b.visible !== r.visible) c++;
+  });
+  base.forEach(function(r){ if (!cmap.has(r.menuId)) c++; });
+  return c;
+}
+
+function updateBadge(){
+  const dirty = isDirty();
+  el('btnSave').disabled = !dirty;
+  const b = el('badge');
+  if (dirty) { b.style.display = 'inline-block'; b.textContent = diffCount(); }
+  else { b.style.display = 'none'; }
+}
+
+// ---------- 渲染 ----------
+
+function render(){
+  const kw = el('fSearch').value.trim().toLowerCase();
+  const searching = !!kw;
+  const tree = searching ? filterTree(state.tree, kw) : state.tree;
+  const root = el('tree');
+  root.innerHTML = '';
+  if (!tree.length) {
+    el('empty').style.display = 'block';
+    return;
+  }
+  el('empty').style.display = 'none';
+  tree.forEach(function(n){ root.appendChild(renderNode(n, searching)); });
+}
+
+/** 搜索过滤：匹配节点保留整枝；子匹配则保留父链 */
+function filterTree(list, kw){
+  const out = [];
+  list.forEach(function(n){
+    const self = n.name.toLowerCase().indexOf(kw) >= 0 || n.menuId.toLowerCase().indexOf(kw) >= 0;
+    const kids = n.children ? filterTree(n.children, kw) : [];
+    if (self) { out.push(Object.assign({}, n, { children: n.children })); }
+    else if (kids.length) { out.push(Object.assign({}, n, { children: kids })); }
+  });
+  return out;
+}
+
+function renderNode(n, searching){
+  const wrap = document.createElement('div');
+  wrap.className = 'tnode';
+
+  const row = document.createElement('div');
+  row.className = 'trow' + (n.locked ? ' locked-row' : '');
+  row.setAttribute('data-id', n.menuId);
+
+  const hasKids = !!(n.children && n.children.length);
+  const isCollapsed = collapsed.has(n.menuId);
+
+  const caret = document.createElement('span');
+  caret.className = 'caret' + (hasKids ? '' : ' leaf');
+  caret.textContent = hasKids ? (isCollapsed ? '▸' : '▾') : '·';
+  if (hasKids) {
+    caret.addEventListener('click', function(){
+      if (collapsed.has(n.menuId)) collapsed.delete(n.menuId); else collapsed.add(n.menuId);
+      render();
+    });
+  }
+  row.appendChild(caret);
+
+  const name = document.createElement('span');
+  name.className = 'tname' + (n.name !== n.originalName ? ' edited' : '');
+  name.textContent = n.name;
+  name.title = (n.name !== n.originalName ? '原名：' + n.originalName + '（双击修改）' : '双击修改名称');
+  if (!n.locked && !searching) {
+    name.addEventListener('dblclick', function(){ startEdit(name, n); });
+  }
+  row.appendChild(name);
+
+  const tag = document.createElement('span');
+  tag.className = 'tag ' + (n.type === 'GROUP' ? 'tag-group' : 'tag-menu');
+  tag.textContent = n.type === 'GROUP' ? '分组' : '菜单';
+  row.appendChild(tag);
+
+  if (!n.visible) { row.appendChild(mkTag('tag-hidden', '已隐藏', '')); }
+  if (n.orphan) { row.appendChild(mkTag('tag-orphan', '遗留', '平台父节点不在 hltgq 集合中，当前挂在顶部展示')); }
+  if (n.locked) { row.appendChild(mkTag('tag-lock', '锁定', '不可改名 / 移动 / 隐藏，恒为顶层第一位')); }
+  if (n.noHide) { row.appendChild(mkTag('tag-nohide', '固定显示', '菜单管理入口，不允许隐藏（隐藏后将无法再进入菜单管理）')); }
+
+  const flex = document.createElement('span');
+  flex.style.flex = '1';
+  row.appendChild(flex);
+
+  const sw = document.createElement('label');
+  sw.className = 'switch';
+  const cb = document.createElement('input');
+  cb.type = 'checkbox';
+  cb.checked = !!n.visible;
+  if (n.locked || n.noHide || searching) {
+    cb.disabled = true;
+  } else {
+    cb.addEventListener('change', function(){ n.visible = cb.checked; updateBadge(); });
+  }
+  const slider = document.createElement('span');
+  slider.className = 'slider';
+  sw.appendChild(cb);
+  sw.appendChild(slider);
+  row.appendChild(sw);
+
+  if (!n.locked && !searching) {
+    bindDrag(row, n);
+  }
+  wrap.appendChild(row);
+
+  if (hasKids && !isCollapsed) {
+    const kids = document.createElement('div');
+    kids.className = 'tchildren';
+    n.children.forEach(function(c){ kids.appendChild(renderNode(c, searching)); });
+    wrap.appendChild(kids);
+  }
+  return wrap;
+}
+
+function mkTag(cls, text, title){
+  const t = document.createElement('span');
+  t.className = 'tag ' + cls;
+  t.textContent = text;
+  if (title) t.title = title;
+  return t;
+}
+
+// ---------- 改名 ----------
+
+function startEdit(nameEl, n){
+  const input = document.createElement('input');
+  input.className = 'name-input';
+  input.value = n.name;
+  input.maxLength = 120;
+  nameEl.replaceWith(input);
+  input.focus();
+  input.select();
+  let done = false;
+  function commit(save){
+    if (done) return;
+    done = true;
+    if (save) {
+      const v = input.value.trim();
+      if (v && v !== n.name) { n.name = v; updateBadge(); }
+    }
+    render();
+  }
+  input.addEventListener('keydown', function(e){
+    if (e.key === 'Enter') commit(true);
+    else if (e.key === 'Escape') commit(false);
+  });
+  input.addEventListener('blur', function(){ commit(true); });
+}
+
+// ---------- 拖拽 ----------
+
+function bindDrag(row, n){
+  row.setAttribute('draggable', 'true');
+  row.addEventListener('dragstart', function(e){
+    drag = { menuId: n.menuId };
+    row.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', n.menuId);
+  });
+  row.addEventListener('dragend', function(){
+    drag = null; drop = null;
+    row.classList.remove('dragging');
+    clearDropStyles();
+  });
+  row.addEventListener('dragover', function(e){
+    if (!drag || drag.menuId === n.menuId) return;
+    if (containsNode(drag.menuId, n.menuId)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const rect = row.getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    const h = rect.height;
+    let zone;
+    if (n.type === 'GROUP') {
+      zone = y < h * 0.3 ? 'before' : (y > h * 0.7 ? 'after' : 'in');
+    } else {
+      zone = y < h * 0.5 ? 'before' : 'after';
+    }
+    setDropStyle(row, n.menuId, zone);
+  });
+  row.addEventListener('drop', function(e){
+    e.preventDefault();
+    doDrop();
+  });
+}
+
+function setDropStyle(rowEl, id, zone){
+  if (drop && drop.menuId === id && drop.zone === zone) return;
+  clearDropStyles();
+  drop = { menuId: id, zone: zone };
+  rowEl.classList.add(zone === 'in' ? 'drop-in' : (zone === 'before' ? 'drop-before' : 'drop-after'));
+}
+
+function clearDropStyles(){
+  document.querySelectorAll('.trow.drop-in,.trow.drop-before,.trow.drop-after').forEach(function(r){
+    r.classList.remove('drop-in', 'drop-before', 'drop-after');
+  });
+}
+
+function doDrop(){
+  if (!drag || !drop) return;
+  const dragId = drag.menuId;
+  const dropTarget = drop;
+  drag = null; drop = null;
+  const removed = removeNode(dragId);
+  if (!removed) { render(); return; }
+  if (dropTarget.zone === 'in') {
+    const tn = findNode(dropTarget.menuId);
+    if (tn && tn.type === 'GROUP') {
+      if (!tn.children) tn.children = [];
+      tn.children.push(removed);
+    } else {
+      state.tree.push(removed);
+    }
+  } else {
+    const info = findParentListInfo(dropTarget.menuId);
+    if (info) {
+      info.list.splice(dropTarget.zone === 'before' ? info.index : info.index + 1, 0, removed);
+    } else {
+      state.tree.push(removed);
+    }
+  }
+  render();
+  updateBadge();
+}
+
+/** 从树中摘除节点，返回该节点 */
+function removeNode(id){
+  let removed = null;
+  (function walk(list){
+    for (let i = 0; i < list.length; i++) {
+      if (list[i].menuId === id) { removed = list.splice(i, 1)[0]; return true; }
+      if (list[i].children && walk(list[i].children)) return true;
+    }
+    return false;
+  })(state.tree);
+  return removed;
+}
+
+function findNode(id, list){
+  list = list || state.tree;
+  for (let i = 0; i < list.length; i++) {
+    if (list[i].menuId === id) return list[i];
+    if (list[i].children) {
+      const f = findNode(id, list[i].children);
+      if (f) return f;
+    }
+  }
+  return null;
+}
+
+function findParentListInfo(id){
+  let res = null;
+  (function walk(list){
+    for (let i = 0; i < list.length; i++) {
+      if (list[i].menuId === id) { res = { list: list, index: i }; return true; }
+      if (list[i].children && walk(list[i].children)) return true;
+    }
+    return false;
+  })(state.tree);
+  return res;
+}
+
+/** id 是否位于 ancId 子树内（含自身） */
+function containsNode(ancId, id){
+  const anc = findNode(ancId);
+  if (!anc) return false;
+  if (ancId === id) return true;
+  let found = false;
+  (function walk(children){
+    (children || []).forEach(function(c){
+      if (c.menuId === id) found = true;
+      if (c.children) walk(c.children);
+    });
+  })(anc.children);
+  return found;
+}
+
+// ---------- 保存 / 还原 ----------
+
+async function save(){
+  el('btnSave').disabled = true;
+  try {
+    const res = await api('menu/admin/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nodes: flatten() })
+    });
+    showToast('已保存：扫描 ' + (res.total || 0) + ' 个节点，变更 ' + (res.changed || 0) + ' 项', true);
+    await load();
+  } catch (e) {
+    showBanner('保存失败：' + e.message, false);
+    updateBadge();
+  }
+}
+
+function resetAll(){
+  openConfirm('还原默认', '将清空当前全部展示配置，并恢复出厂基线（顶层顺序与隐藏项）。\n此操作会覆盖管理员做出的所有调整。', '还原', true, async function(){
+    try {
+      await api('menu/admin/reset', { method: 'POST' });
+      showToast('已还原默认', true);
+      await load();
+    } catch (e) {
+      showBanner('还原失败：' + e.message, false);
+    }
+  });
+}
+
+// ---------- 初始化 ----------
+
+el('btnSave').addEventListener('click', save);
+el('btnReset').addEventListener('click', resetAll);
+el('btnReload').addEventListener('click', function(){
+  if (isDirty()) {
+    openConfirm('重新加载', '当前有未保存的更改，重新加载将丢弃这些更改。', '继续', false, function(){
+      load().catch(function(e){ showBanner('加载失败：' + e.message, false); });
+    });
+  } else {
+    load().catch(function(e){ showBanner('加载失败：' + e.message, false); });
+  }
+});
+el('fSearch').addEventListener('input', function(){ render(); });
+
+window.addEventListener('beforeunload', function(e){
+  if (isDirty()) { e.preventDefault(); e.returnValue = ''; }
+});
+
+load().catch(function(e){ showBanner('加载失败：' + e.message, false); });
+</script>
+</body>
+</html>
