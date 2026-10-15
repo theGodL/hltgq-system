@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>系统操作日志监控</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;background:#f5f7fa;color:#333;font-size:14px;-webkit-font-smoothing:antialiased}
+.page{padding:20px 24px 48px}
+.page-title{font-size:20px;font-weight:600;color:#1f1f1f;margin-bottom:4px}
+.page-sub{font-size:13px;color:#8c8c8c;margin-bottom:18px}
+.banner{display:none;margin-bottom:14px;padding:10px 14px;border-radius:6px;background:#f6ffed;border:1px solid #b7eb8f;color:#389e0d;font-size:13px}
+.banner.err{background:#fff2f0;border-color:#ffccc7;color:#cf1322}
+.card{background:#fff;border-radius:8px;padding:16px 18px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.filters{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:14px}
+.fitem{display:flex;flex-direction:column;gap:6px}
+.fitem label{font-size:12px;color:#8c8c8c}
+select,input{height:32px;padding:0 10px;border:1px solid #d9d9d9;border-radius:6px;font-size:13px;font-family:inherit;color:#333;outline:none;transition:border-color .2s}
+select:focus,input:focus{border-color:#1677ff}
+input{min-width:160px}
+.btn{display:inline-flex;align-items:center;justify-content:center;height:32px;padding:0 16px;border:1px solid transparent;border-radius:6px;font-size:13px;font-family:inherit;cursor:pointer;transition:all .2s}
+.btn-primary{background:#1677ff;color:#fff;border-color:#1677ff}
+.btn-primary:hover{background:#4096ff}
+.btn-default{background:#fff;color:#333;border-color:#d9d9d9}
+.btn-default:hover{color:#1677ff;border-color:#1677ff}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.toolbar .total{font-size:13px;color:#8c8c8c}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:9px 10px;text-align:left;border-bottom:1px solid #f0f0f0;white-space:nowrap}
+th{background:#fafafa;color:#595959;font-weight:500}
+td.mono{font-family:Consolas,Menlo,monospace;font-size:12px;color:#595959}
+tr:hover td{background:#fafcff}
+.tag{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:4px;font-size:12px;font-weight:500}
+.tag-INSERT{background:#f6ffed;color:#52c41a}
+.tag-UPDATE{background:#e6f4ff;color:#1677ff}
+.tag-DELETE{background:#fff2f0;color:#cf1322}
+.link{color:#1677ff;cursor:pointer}
+.link:hover{color:#4096ff}
+.empty{padding:40px;text-align:center;color:#bfbfbf}
+.pager{display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-top:14px;font-size:13px;color:#595959}
+.ov{display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.45);align-items:flex-start;justify-content:center;padding:30px;overflow-y:auto}
+.ov.show{display:flex}
+.modal{background:#fff;border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,.16);width:100%;max-width:920px}
+.modal-hd{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;border-bottom:1px solid #f0f0f0;font-size:16px;font-weight:600}
+.modal-x{border:none;background:none;font-size:20px;color:#8c8c8c;cursor:pointer;line-height:1}
+.modal-bd{padding:18px 22px}
+.kv{display:grid;grid-template-columns:120px 1fr 120px 1fr;gap:10px 14px;margin-bottom:16px;font-size:13px}
+.kv .k{color:#8c8c8c}
+.json-wrap{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.json-col h4{font-size:13px;color:#595959;margin-bottom:8px}
+pre{background:#fafafa;border:1px solid #f0f0f0;border-radius:6px;padding:12px;font-family:Consolas,Menlo,monospace;font-size:12px;color:#333;white-space:pre-wrap;word-break:break-all;max-height:420px;overflow:auto}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="banner" id="banner"></div>
+
+  <div class="card">
+    <div class="filters">
+      <div class="fitem"><label>菜单分组</label><select id="fGroup"><option value="">全部</option></select></div>
+      <div class="fitem"><label>操作类型</label>
+        <select id="fType">
+          <option value="">全部</option>
+          <option value="INSERT">新增</option>
+          <option value="UPDATE">修改</option>
+          <option value="DELETE">删除</option>
+        </select>
+      </div>
+      <div class="fitem"><label>开始时间</label><input type="datetime-local" id="fStart"></div>
+      <div class="fitem"><label>结束时间</label><input type="datetime-local" id="fEnd"></div>
+      <div class="fitem"><label>关键字</label><input id="fKeyword" placeholder="操作人 / 表单名"></div>
+      <div class="fitem"><label>&nbsp;</label>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary" id="btnQuery">查询</button>
+          <button class="btn btn-default" id="btnReset">重置</button>
+        </div>
+      </div>
+    </div>
+    <div class="toolbar">
+      <div class="total" id="total">共 0 条</div>
+      <div>
+        <button class="btn btn-default" id="btnScan">刷新</button>
+      </div>
+    </div>
+    <div id="listWrap">
+      <table>
+        <thead>
+          <tr>
+            <th>操作时间</th><th>分组</th><th>表单</th><th>操作类型</th>
+            <th>操作人</th><th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <div class="empty" id="empty" style="display:none">暂无数据</div>
+    </div>
+    <div class="pager">
+      <span id="pageInfo">第 1 / 1 页</span>
+      <button class="btn btn-default" id="btnPrev">上一页</button>
+      <button class="btn btn-default" id="btnNext">下一页</button>
+    </div>
+  </div>
+</div>
+
+<div class="ov" id="ov">
+  <div class="modal">
+    <div class="modal-hd">
+      <span>操作日志详情</span>
+      <button class="modal-x" id="modalX">&times;</button>
+    </div>
+    <div class="modal-bd">
+      <div class="kv" id="detailKv"></div>
+      <div class="json-col"><h4>描述</h4><pre id="descBox">-</pre></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API_BASE = location.pathname.replace(/[^/]*$/, '');
+let pageNo = 1, pageSize = 20, total = 0, pages = 1;
+let groupsLoaded = false;
+
+function el(id){ return document.getElementById(id); }
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function fmtTime(t){ return t ? String(t).replace('T',' ').substring(0,23) : '-'; }
+
+async function api(path, opts){
+  const resp = await fetch(API_BASE + path, opts);
+  if (resp.status === 403) { throw {forbidden:true, message:'无操作权限，仅系统管理员可查看操作日志'}; }
+  if (resp.status === 401) { throw {unauthorized:true, message:'未登录或登录已过期，请重新登录平台'}; }
+  if (!resp.ok) { const t = await resp.text(); throw {message:'请求失败('+resp.status+') '+t}; }
+  const ct = resp.headers.get('content-type')||'';
+  return ct.includes('application/json') ? resp.json() : resp.text();
+}
+
+function showBanner(msg, ok){
+  const b = el('banner');
+  b.textContent = msg;
+  b.className = 'banner' + (ok ? '' : ' err');
+  b.style.display = 'block';
+}
+
+async function loadGroups(){
+  if (groupsLoaded) return;
+  try {
+    const list = await api('op-log/groups');
+    const sel = el('fGroup');
+    list.forEach(g=>{
+      const opt = document.createElement('option');
+      opt.value = g.groupName;
+      opt.textContent = g.groupName + (g.enabled ? '' : '（未启用）');
+      sel.appendChild(opt);
+    });
+    groupsLoaded = true;
+  } catch(e){ /* 分组加载失败不阻断列表 */ }
+}
+
+function buildQuery(){
+  const p = new URLSearchParams();
+  if (el('fGroup').value) p.set('groupName', el('fGroup').value);
+  if (el('fType').value) p.set('opType', el('fType').value);
+  if (el('fKeyword').value.trim()) p.set('keyword', el('fKeyword').value.trim());
+  if (el('fStart').value) p.set('startTime', el('fStart').value.replace('T',' '));
+  if (el('fEnd').value) p.set('endTime', el('fEnd').value.replace('T',' '));
+  p.set('pageNo', pageNo);
+  p.set('pageSize', pageSize);
+  return p.toString();
+}
+
+function renderRows(records){
+  const tbody = el('tbody');
+  tbody.innerHTML = '';
+  if (!records || records.length === 0) {
+    el('empty').style.display = 'block';
+    return;
+  }
+  el('empty').style.display = 'none';
+  records.forEach(r=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td>'+esc(fmtTime(r.opAt))+'</td>' +
+      '<td>'+esc(r.groupName)+'</td>' +
+      '<td>'+esc(r.formName)+'</td>' +
+      '<td><span class="tag tag-'+esc(r.opType)+'">'+opTypeText(r.opType)+'</span></td>' +
+      '<td>'+esc(r.operatorName||r.operatorId||'-')+'</td>' +
+      '<td><span class="link" data-id="'+esc(r.id)+'">详情</span></td>';
+    tbody.appendChild(tr);
+  });
+  tbody.querySelectorAll('.link').forEach(a=>a.addEventListener('click', ()=>openDetail(a.getAttribute('data-id'))));
+}
+
+function opTypeText(t){ return t==='INSERT'?'新增':(t==='UPDATE'?'修改':(t==='DELETE'?'删除':t)); }
+
+async function loadList(){
+  try {
+    const data = await api('op-log/list?'+buildQuery());
+    total = data.total; pages = data.pages || 1;
+    renderRows(data.records);
+    el('total').textContent = '共 ' + total + ' 条';
+    el('pageInfo').textContent = '第 ' + (data.current||pageNo) + ' / ' + pages + ' 页';
+  } catch(e){
+    showBanner(e.message||'加载失败', false);
+    renderRows([]);
+  }
+}
+
+const dictCache = {};
+async function loadDict(table){
+  if (!table) return {};
+  if (dictCache[table]) return dictCache[table];
+  let m = {};
+  try { m = await api('op-log/dict?tableName='+encodeURIComponent(table)) || {}; } catch(e){ m = {}; }
+  dictCache[table] = m;
+  return m;
+}
+function renderJson(json, dict){
+  if (!json) return '';
+  try {
+    const o = JSON.parse(json);
+    const out = {};
+    Object.keys(o).forEach(k => { out[dict[k] || k] = o[k]; });
+    return JSON.stringify(out, null, 2);
+  } catch(e){ return json; }
+}
+function translateFields(cf, dict){
+  if (!cf) return '';
+  return cf.split(',').map(x => dict[x] || x).join('、');
+}
+
+function safeParse(json){ if(!json) return null; try{ const o=JSON.parse(json); return (o && typeof o==='object')?o:null; }catch(e){ return null; } }
+const SKIP_KEYS = {id:1,corp_code:1,created_at:1,created_by:1,updated_at:1,updated_by:1};
+function looksLikeId(v){
+  // 形如 22 位短ID/纯编码的，不作为名称
+  return /^[A-Za-z0-9]{20,}$/.test(v) || /^[0-9a-fA-F]{8}-[0-9a-fA-F-]{20,}$/.test(v);
+}
+function pickName(obj, fields){
+  if(!obj) return '';
+  const prefer = ['名称','标题','姓名','简称','站名'];
+  for (const k in obj){
+    if (SKIP_KEYS[k] || k.charAt(0)==='_') continue;
+    const v = obj[k];
+    if (v===null || v===undefined || v==='') continue;
+    const sv = String(v);
+    const label = fields[k] || k;
+    if (prefer.some(p => label.indexOf(p) >= 0) && !looksLikeId(sv)) return sv;
+  }
+  return '';
+}
+function decodeVal(fieldCode, raw, enums){
+  if (raw===null || raw===undefined || raw==='') return raw;
+  const map = enums ? enums[fieldCode] : null;
+  if (!map) return raw;
+  return String(raw).split('|').map(x => { const key = x.replace(/^#+|#+$/g, ''); return map[key] || x; }).join('、');
+}
+function fmtVal(fieldCode, v, enums){
+  if (v===null || v===undefined || v==='') return '（空）';
+  let s;
+  if (typeof v === 'string') s = decodeVal(fieldCode, v, enums);
+  else if (typeof v === 'object') s = JSON.stringify(v);
+  else s = String(v);
+  return s.length > 60 ? s.substring(0,60)+'…' : s;
+}
+function describe(d, dict){
+  const fields = (dict && dict.fields) || {};
+  const enums = (dict && dict.enums) || {};
+  const form = d.formName || d.tableName || '';
+  const before = safeParse(d.beforeJson);
+  const after = safeParse(d.afterJson);
+  const name = pickName(after || before, fields);
+  const namePart = name ? ('中「' + name + '」') : '';
+  if (d.opType === 'INSERT') return '新增了「' + form + '」一条数据。';
+  if (d.opType === 'DELETE') return name ? ('删除了「' + form + '」' + namePart + '的数据') : ('删除了「' + form + '」一条数据。');
+  const changed = (d.changeFields || '').split(',').filter(Boolean);
+  const parts = changed.map(k => {
+    const label = fields[k] || k;
+    const ov = before ? before[k] : undefined;
+    const nv = after ? after[k] : undefined;
+    return '把「' + label + '」从「' + fmtVal(k, ov, enums) + '」改成了「' + fmtVal(k, nv, enums) + '」';
+  });
+  return '修改了「' + form + '」' + namePart + '的数据' + (parts.length ? ('：' + parts.join('；')) : '');
+}
+
+async function openDetail(id){
+  try {
+    const d = await api('op-log/'+encodeURIComponent(id));
+    const dict = await loadDict(d.tableName);
+    const kv = el('detailKv');
+    kv.innerHTML =
+      '<div class="k">操作时间</div><div>'+esc(fmtTime(d.opAt))+'</div>' +
+      '<div class="k">操作类型</div><div>'+opTypeText(d.opType)+'</div>' +
+      '<div class="k">菜单分组</div><div>'+esc(d.groupName)+'</div>' +
+      '<div class="k">表单</div><div>'+esc(d.formName)+'</div>' +
+      '<div class="k">操作人</div><div>'+esc(d.operatorName||'-')+'</div>' +
+      '<div class="k"></div><div></div>';
+    el('descBox').textContent = describe(d, dict);
+    el('ov').classList.add('show');
+  } catch(e){ showBanner(e.message||'详情加载失败', false); }
+}
+
+function pretty(json){
+  if (!json) return '-';
+  try { return JSON.stringify(JSON.parse(json), null, 2); } catch(e){ return json; }
+}
+
+el('btnQuery').addEventListener('click', ()=>{ pageNo=1; loadList(); });
+el('btnReset').addEventListener('click', ()=>{
+  el('fGroup').value=''; el('fType').value=''; el('fKeyword').value='';
+  el('fStart').value=''; el('fEnd').value=''; pageNo=1; loadList();
+});
+el('btnPrev').addEventListener('click', ()=>{ if(pageNo>1){pageNo--; loadList();} });
+el('btnNext').addEventListener('click', ()=>{ if(pageNo<pages){pageNo++; loadList();} });
+el('btnScan').addEventListener('click', async ()=>{
+  const btn = el('btnScan'); btn.disabled = true; btn.textContent='刷新中...';
+  try {
+    await api('op-log/scan', {method:'POST'});
+    pageNo = 1; await loadList();
+    showBanner('刷新成功', true);
+  } catch(e){ showBanner(e.message||'刷新失败', false); }
+  finally { btn.disabled=false; btn.textContent='刷新'; }
+});
+el('modalX').addEventListener('click', ()=>el('ov').classList.remove('show'));
+el('ov').addEventListener('click', (e)=>{ if(e.target===el('ov')) el('ov').classList.remove('show'); });
+
+(async function init(){
+  await loadGroups();
+  await loadList();
+})();
+</script>
+</body>
+</html>

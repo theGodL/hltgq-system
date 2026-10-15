@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>登录日志</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;background:#f5f7fa;color:#333;font-size:14px;-webkit-font-smoothing:antialiased}
+.page{padding:20px 24px 48px}
+.page-title{font-size:20px;font-weight:600;color:#1f1f1f;margin-bottom:18px}
+.banner{display:none;margin-bottom:14px;padding:10px 14px;border-radius:6px;background:#f6ffed;border:1px solid #b7eb8f;color:#389e0d;font-size:13px}
+.banner.err{background:#fff2f0;border-color:#ffccc7;color:#cf1322}
+.card{background:#fff;border-radius:8px;padding:16px 18px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.filters{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:14px}
+.fitem{display:flex;flex-direction:column;gap:6px}
+.fitem label{font-size:12px;color:#8c8c8c}
+select,input{height:32px;padding:0 10px;border:1px solid #d9d9d9;border-radius:6px;font-size:13px;font-family:inherit;color:#333;outline:none;transition:border-color .2s}
+select:focus,input:focus{border-color:#1677ff}
+input{min-width:170px}
+.btn{display:inline-flex;align-items:center;justify-content:center;height:32px;padding:0 16px;border:1px solid transparent;border-radius:6px;font-size:13px;font-family:inherit;cursor:pointer;transition:all .2s}
+.btn-primary{background:#1677ff;color:#fff;border-color:#1677ff}
+.btn-primary:hover{background:#4096ff}
+.btn-default{background:#fff;color:#333;border-color:#d9d9d9}
+.btn-default:hover{color:#1677ff;border-color:#1677ff}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.toolbar .total{font-size:13px;color:#8c8c8c}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:9px 10px;text-align:left;border-bottom:1px solid #f0f0f0;white-space:nowrap}
+th{background:#fafafa;color:#595959;font-weight:500}
+td.mono{font-family:Consolas,Menlo,monospace;font-size:12px;color:#595959}
+td.ua{max-width:280px;overflow:hidden;text-overflow:ellipsis;font-size:12px;color:#8c8c8c}
+tr:hover td{background:#fafcff}
+.empty{padding:40px;text-align:center;color:#bfbfbf}
+.pager{display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-top:14px;font-size:13px;color:#595959}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="banner" id="banner"></div>
+
+  <div class="card">
+    <div class="filters">
+      <div class="fitem"><label>开始时间</label><input type="datetime-local" id="fStart"></div>
+      <div class="fitem"><label>结束时间</label><input type="datetime-local" id="fEnd"></div>
+      <div class="fitem"><label>关键字</label><input id="fKeyword" placeholder="操作人 / IP / sessionId / agent"></div>
+      <div class="fitem"><label>&nbsp;</label>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary" id="btnQuery">查询</button>
+          <button class="btn btn-default" id="btnReset">重置</button>
+        </div>
+      </div>
+    </div>
+    <div class="toolbar">
+      <div class="total" id="total">共 0 条</div>
+      <div><button class="btn btn-default" id="btnCollect">刷新</button></div>
+    </div>
+    <div id="listWrap">
+      <table>
+        <thead>
+          <tr>
+            <th>操作内容</th><th>登录IP</th>
+            <th>浏览器agent</th><th>登录地点</th><th>登陆时间</th><th>登陆人</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <div class="empty" id="empty" style="display:none">暂无数据</div>
+    </div>
+    <div class="pager">
+      <span id="pageInfo">第 1 / 1 页</span>
+      <button class="btn btn-default" id="btnPrev">上一页</button>
+      <button class="btn btn-default" id="btnNext">下一页</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API_BASE = location.pathname.replace(/[^/]*$/, '');
+let pageNo = 1, pageSize = 20, total = 0, pages = 1;
+
+const LOGIN_TYPE = { CORP: '账户密码', MOBILE_VERIFY: '手机验证码', DDING: '钉钉', WX: '企业微信' };
+
+function el(id){ return document.getElementById(id); }
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function fmtTime(t){ return t ? String(t).replace('T',' ').substring(0,23) : ''; }
+function typeName(t){ return LOGIN_TYPE[t] || t || '-'; }
+
+async function api(path, opts){
+  const resp = await fetch(API_BASE + path, opts);
+  if (resp.status === 403) throw {message:'无操作权限，仅系统管理员可查看登录日志'};
+  if (resp.status === 401) throw {message:'未登录或登录已过期，请重新登录平台'};
+  if (!resp.ok) { const t = await resp.text(); throw {message:'请求失败('+resp.status+') '+t}; }
+  const ct = resp.headers.get('content-type')||'';
+  return ct.includes('application/json') ? resp.json() : resp.text();
+}
+function showBanner(msg, ok){ const b=el('banner'); b.textContent=msg; b.className='banner'+(ok?'':' err'); b.style.display='block'; }
+
+function buildQuery(){
+  const p = new URLSearchParams();
+  if (el('fKeyword').value.trim()) p.set('keyword', el('fKeyword').value.trim());
+  if (el('fStart').value) p.set('startTime', el('fStart').value.replace('T',' '));
+  if (el('fEnd').value) p.set('endTime', el('fEnd').value.replace('T',' '));
+  p.set('pageNo', pageNo);
+  p.set('pageSize', pageSize);
+  return p.toString();
+}
+
+function renderRows(records){
+  const tbody = el('tbody');
+  tbody.innerHTML = '';
+  if (!records || records.length === 0) { el('empty').style.display='block'; return; }
+  el('empty').style.display='none';
+  records.forEach(r=>{
+    const t = fmtTime(r.loginAt);
+    const content = (t||'') + ' 登陆了 ' + (r.terminal||'');
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td>'+esc(content)+'</td>' +
+      '<td class="mono">'+esc(r.ip||'-')+'</td>' +
+      '<td class="ua" title="'+esc(r.userAgent||'')+'">'+esc(r.userAgent||'-')+'</td>' +
+      '<td>'+esc(r.region||'-')+'</td>' +
+      '<td>'+esc(t)+'</td>' +
+      '<td>'+esc(r.operatorName||r.operator||'-')+'</td>';
+    tbody.appendChild(tr);
+  });
+}
+
+async function loadList(){
+  try {
+    const data = await api('login-log/list?'+buildQuery());
+    total = data.total; pages = data.pages || 1;
+    renderRows(data.records);
+    el('total').textContent = '共 ' + total + ' 条';
+    el('pageInfo').textContent = '第 ' + (data.current||pageNo) + ' / ' + pages + ' 页';
+  } catch(e){ showBanner(e.message||'加载失败', false); renderRows([]); }
+}
+
+el('btnQuery').addEventListener('click', ()=>{ pageNo=1; loadList(); });
+el('btnReset').addEventListener('click', ()=>{
+  el('fKeyword').value='';
+  el('fStart').value=''; el('fEnd').value=''; pageNo=1; loadList();
+});
+el('btnPrev').addEventListener('click', ()=>{ if(pageNo>1){pageNo--; loadList();} });
+el('btnNext').addEventListener('click', ()=>{ if(pageNo<pages){pageNo++; loadList();} });
+el('btnCollect').addEventListener('click', async ()=>{
+  const btn = el('btnCollect'); btn.disabled = true; btn.textContent='刷新中...';
+  try {
+    await api('login-log/collect', {method:'POST'});
+    pageNo = 1; await loadList();
+    showBanner('刷新成功', true);
+  } catch(e){ showBanner(e.message||'刷新失败', false); }
+  finally { btn.disabled=false; btn.textContent='刷新'; }
+});
+
+(function init(){ loadList(); })();
+</script>
+</body>
+</html>

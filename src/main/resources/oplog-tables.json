@@ -1,0 +1,109 @@
+{
+  "initialLookbackDays": 45,
+  "scanCron": "0 0/5 * * * ?",
+  "scanEnabled": true,
+  "systemOperators": ["SYSTEM", "system", "model-service"],
+  "groups": [
+    {
+      "groupName": "水资源调度",
+      "appName": "水资源调度",
+      "enabled": true,
+      "tables": [
+        { "tableName": "t_auto_hltgq_water_short_forecast_record", "formName": "短期来水预测", "trackDelete": false },
+        { "tableName": "t_auto_hltgq_water_long_predict_record", "formName": "中长期来水预测", "trackDelete": false },
+        { "tableName": "t_auto_hltgq_water_demand_record", "formName": "需水预测", "trackDelete": false },
+        { "tableName": "t_auto_hltgq_water_loss_record", "formName": "水量损失", "trackDelete": false },
+        { "tableName": "t_auto_hltgq_water_allocate_record", "formName": "水资源配置", "trackDelete": false },
+        { "tableName": "t_auto_hltgq_water_decision_record", "formName": "配水调度预测", "trackDelete": false },
+        { "tableName": "t_auto_hltgq_yn8cm_hdbzyd", "formName": "值班管理", "trackDelete": true },
+        { "tableName": "t_auto_hltgq_yn8cm_igahxz", "formName": "值班交接班", "trackDelete": true },
+        { "tableName": "t_auto_hltgq_yn8cm_kwzwga", "formName": "交接班记录", "trackDelete": true }
+      ]
+    },
+    {
+      "groupName": "灌区综合管理系统",
+      "appName": "灌区综合管理系统",
+      "enabled": true,
+      "tables": [
+        { "tableName": "t_auto_hltgq_5nw74_vnqqef", "formName": "站点管理", "trackDelete": true },
+        { "tableName": "t_auto_hltgq_5nw74_ptzngj", "formName": "图例模型", "trackDelete": true },
+        { "tableName": "t_auto_hltgq_water_station_sort", "formName": "站点排序", "trackDelete": false },
+        { "tableName": "t_auto_hltgq_5nw74_ipbfib", "formName": "水利知识科普", "trackDelete": true },
+        { "tableName": "t_auto_hltgq_5nw74_xpknuz", "formName": "云上水利展厅", "trackDelete": true },
+        { "tableName": "t_auto_hltgq_5nw74_plmmdh", "formName": "举报投诉", "trackDelete": true },
+        { "tableName": "t_auto_hltgq_5nw74_snvday", "formName": "意见征集", "trackDelete": true },
+        { "tableName": "t_auto_hltgq_5nw74_khpklb", "formName": "信息公开", "trackDelete": true },
+        { "tableName": "t_auto_hltgq_water_message_rule", "formName": "消息接收规则", "trackDelete": false }
+      ]
+    },
+    {
+      "groupName": "运行监测",
+      "appName": "运行监测",
+      "enabled": true,
+      "tables": [
+        { "tableName": "t_auto_hltgq_water_device", "formName": "设备管理", "trackDelete": false },
+        { "tableName": "t_auto_hltgq_knc3g_egvnhw", "formName": "渠系管理", "trackDelete": true },
+        { "tableName": "t_auto_hltgq_knc3g_twufyx", "formName": "仓库管理", "trackDelete": true },
+        { "tableName": "t_auto_hltgq_knc3g_slaifi", "formName": "物资目录", "trackDelete": true },
+        { "tableName": "t_auto_hltgq_water_inbound_order", "formName": "物资入库单", "trackDelete": false },
+        { "tableName": "t_auto_hltgq_water_inbound_order_detail", "formName": "入库单明细", "trackDelete": false },
+        { "tableName": "t_auto_hltgq_water_outbound_order", "formName": "物资出库单", "trackDelete": false },
+        { "tableName": "t_auto_hltgq_water_outbound_order_detail", "formName": "出库单明细", "trackDelete": false },
+        { "tableName": "t_auto_hltgq_water_stock_change_log", "formName": "库存变动流水", "trackDelete": false },
+        { "tableName": "t_auto_hltgq_water_stocktake_order", "formName": "设备盘点", "trackDelete": true },
+        { "tableName": "t_auto_hltgq_water_stocktake_order_detail", "formName": "盘点明细", "trackDelete": true },
+        { "tableName": "t_auto_hltgq_water_threshold", "formName": "阈值管理", "trackDelete": true },
+        { "tableName": "t_auto_hltgq_water_patrol_schedule", "formName": "巡检计划", "trackDelete": true },
+        { "tableName": "t_auto_hltgq_water_inspection_record", "formName": "巡检记录", "trackDelete": true },
+        { "tableName": "t_auto_hltgq_knc3g_bpzjoh", "formName": "问题记录", "trackDelete": true },
+        { "tableName": "t_auto_hltgq_water_work_order", "formName": "工单管理", "trackDelete": false },
+        { "tableName": "t_auto_hltgq_knc3g_wwpqln", "formName": "模板管理", "trackDelete": true },
+        { "tableName": "t_auto_hltgq_knc3g_cyyhhi", "formName": "模板类型", "trackDelete": true },
+        { "tableName": "t_auto_hltgq_knc3g_iltiza", "formName": "检修类型", "trackDelete": true },
+        { "tableName": "t_auto_hltgq_water_sluice_discharge", "formName": "闸站流量计算参数", "trackDelete": false },
+        { "tableName": "t_auto_hltgq_water_rain_info", "formName": "雨量监测(人工干预)", "trackDelete": false, "softDeleteColumn": "deleted", "softDeleteValues": ["1", "true", "t", "#1#"] },
+        { "tableName": "t_auto_hltgq_water_rain_adjust", "formName": "雨量补偿值", "trackDelete": true }
+      ]
+    },
+    {
+      "groupName": "智能决策",
+      "appName": "智能决策",
+      "enabled": true,
+      "tables": [
+        { "tableName": "t_auto_hltgq_water_moisture_detail", "formName": "墒情预测方案", "trackDelete": false }
+      ]
+    },
+    {
+      "groupName": "应急管理",
+      "appName": "应急管理",
+      "enabled": true,
+      "tables": [
+        { "tableName": "t_auto_hltgq_bcmxdv_faiczc", "formName": "应急组织", "trackDelete": true },
+        { "tableName": "t_auto_hltgq_bcmxdv_gzbifm", "formName": "灾害等级", "trackDelete": true },
+        { "tableName": "t_auto_hltgq_bcmxdv_bewqdn", "formName": "应急事件", "trackDelete": true },
+        { "tableName": "t_auto_hltgq_bcmxdv_ifjcmy", "formName": "应急保障", "trackDelete": true },
+        { "tableName": "t_auto_hltgq_bcmxdv_yxgojn", "formName": "危险源", "trackDelete": true },
+        { "tableName": "t_auto_hltgq_bcmxdv_eqjqmx", "formName": "危险发生记录", "trackDelete": true }
+      ]
+    },
+    {
+      "groupName": "系统中心",
+      "appName": "系统中心",
+      "enabled": true,
+      "tables": [
+        { "tableName": "t_apaas_uc_user", "formName": "用户管理", "trackDelete": true, "corpFilter": "hltgq", "maskFields": ["pwd"] },
+        { "tableName": "t_apaas_uc_org", "formName": "组织架构", "trackDelete": true, "corpFilter": "hltgq" },
+        { "tableName": "t_apaas_uc_org_manager_rel", "formName": "组织管理员关系", "trackDelete": true, "corpFilter": "hltgq" },
+        { "tableName": "t_apaas_uc_user_org_rel", "formName": "用户组织关系", "trackDelete": true, "corpFilter": "hltgq" },
+        { "tableName": "t_apaas_uc_position", "formName": "岗位管理", "trackDelete": true, "corpFilter": "hltgq" },
+        { "tableName": "t_apaas_auth_role_assign_rel", "formName": "角色分配", "trackDelete": true, "corpFilter": "hltgq" },
+        { "tableName": "t_apaas_auth_role", "formName": "角色管理", "trackDelete": true, "corpFilter": "hltgq" },
+        { "tableName": "t_apaas_auth_page", "formName": "功能权限", "trackDelete": true, "corpFilter": "hltgq" },
+        { "tableName": "t_apaas_auth_data", "formName": "数据权限", "trackDelete": true, "corpFilter": "hltgq" },
+        { "tableName": "t_apaas_sys_corp_setting", "formName": "组织管理", "trackDelete": false, "corpFilter": "hltgq" },
+        { "tableName": "t_apaas_sys_corp_setting_rel", "formName": "组织管理设置关系", "trackDelete": false, "corpFilter": "hltgq" },
+        { "tableName": "t_apaas_sys_menu", "formName": "菜单管理", "trackDelete": true, "corpFilter": "hltgq" }
+      ]
+    }
+  ]
+}
